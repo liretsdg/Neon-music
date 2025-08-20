@@ -8,6 +8,27 @@
 对C 易语言开发电脑exe桌面程序不太了解的开发者们降低难度  
 （注意我只会在我自己的霓音项目里面来编写更新代码）  
 
+有配置文件夹的Neonmusic.config在你打包的时候要在程序目录弄这个
+
+#程序设置
+#--------------------------------------
+#开始文件
+.-Topic=Topic/Neon music/index.html
+
+#宽窗口高窗口
+.-width=800
+.-height=600
+
+ #背景（可以用图片，左上角文字，左上角文字颜色 ，最小化（可以图片），最大化（可以图片），最大化是否关闭yes或no，关闭（可以图片）
+.-TitleBackground=000000
+.-TitleText=Neon Music Player
+.-TitleTextColor=FFBFBF
+.-MinimizeBtn=Icon/MinimizeBtn.png
+.-MaximizeBtn=大
+.-HideMaximizeBtn=yes
+.-CloseBtn=关
+#---------------------------------------------
+
 # 开发日志
 
 ## 1.2.0  2025年8月1-未定（未完成）
