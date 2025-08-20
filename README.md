@@ -9,8 +9,9 @@
 （注意我只会在我自己的霓音项目里面来编写更新代码）  
 ## 部署教程（C#）
 - 1.Visual Studio创建一个WPF应用程序
-- 1
-
+- 2.（快捷键alt长安（T-N-N））工具-Nuget包管理器-管理解决方案的Nuget包管理器-搜索Microsoft.Web.WebView2-安装（我用的版本1.0.3405.78）
+- 3.项目MainWindow.xaml.cs（主），MainWindow.xaml（界面）-JsBridge.cs（桥接）
+- 其他自己研究
 
 # 开发日志
 
