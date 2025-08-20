@@ -1,7 +1,7 @@
 # 霓音 Neon music
 
-我开源的目的是存储的开发时的代码防止代码没了  
-这个项目也没有什么技术含金量，开发工具（Visual Studio + Microsoft.Web.WebView2 + 桥接html操作C#控制电脑本地读改写）  
+我开源的目的是存储的，开发时的代码防止代码没了 。
+这个项目也没有什么技术含金量，开发工具（Visual Studio + Microsoft.Web.WebView2 + 桥接html操作C#控制电脑本地读改写）  。
 然后我在编写一套HTML来制作音乐播放器。  
 
 可以干嘛：  
