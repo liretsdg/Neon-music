@@ -11,7 +11,8 @@
 - 1.Visual Studio创建一个WPF应用程序
 - 2.（快捷键alt长安（T-N-N））工具-Nuget包管理器-管理解决方案的Nuget包管理器-搜索Microsoft.Web.WebView2-安装（我用的版本1.0.3405.78）
 - 3.项目MainWindow.xaml.cs（主），MainWindow.xaml（界面）-JsBridge.cs（桥接）
-- 其他自己研究
+- 4.项目运行或者打包的必须主exe同目录文件有assets\Neonmusic.config（配置文件）
+- 其他的自己研究研究
 
 # 开发日志
 
