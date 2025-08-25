@@ -1,12 +1,18 @@
 # 霓音 Neon music
 
-我开源的目的是存储的开发时的代码防止代码没了  
-这个项目也没有什么技术含金量，开发工具（Visual Studio + Microsoft WebBrowser + 桥接html操作C#控制电脑本地读改写）  
+我开源的目的是存储的，开发时的代码防止代码没了 。
+这个项目也没有什么技术含金量，开发工具（Visual Studio + Microsoft.Web.WebView2 + 桥接html操作C#控制电脑本地读改写）  。
 然后我在编写一套HTML来制作音乐播放器。  
 
 可以干嘛：  
 对C 易语言开发电脑exe桌面程序不太了解的开发者们降低难度  
 （注意我只会在我自己的霓音项目里面来编写更新代码）  
+## 部署教程（C#）
+- 1.Visual Studio创建一个WPF应用程序
+- 2.（快捷键alt长按（T-N-N））工具-Nuget包管理器-管理解决方案的Nuget包管理器-搜索Microsoft.Web.WebView2-安装（我用的版本1.0.3405.78）
+- 3.项目MainWindow.xaml.cs（主），MainWindow.xaml（界面），JsBridge.cs（桥接）
+- 4.项目运行或者打包的必须主exe同目录文件有assets\Neonmusic.config（配置文件）
+- 其他的自己研究研究
 
 # 开发日志
 
@@ -14,7 +20,7 @@
 
 ---
 
-（下面的只是霓音之前版本也就是小末播放器）  
+（下面的只是霓音之前版本也就是小末播放器）  （小末播放器不会在git开源因为我懒）
 
 ## 1.1.0  2025 7月15日-2025年7月29（开发完成）
 
