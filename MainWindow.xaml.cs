@@ -35,12 +35,20 @@ namespace Neon_music
                 Environment.Exit(0);
 
             var configLines = File.ReadAllLines(configPath)
-    .Select(line => line.Trim())
-    .Where(line => !string.IsNullOrWhiteSpace(line) && !line.StartsWith("#"))
-    .ToList();
+                .Select(line => line.Trim())
+                .Where(line => !string.IsNullOrWhiteSpace(line) && !line.StartsWith("#"))
+                .ToList();
 
             ApplyTitleBarSettings(configLines);
             ApplyWindowSettings(configLines);
+
+            string kpgg = GetConfigValue(configLines, ".-Kpgg") ?? "yes";
+
+            if (kpgg.Equals("no", StringComparison.OrdinalIgnoreCase))
+            {
+                await EndIntroVideoAndLoadWebView();
+                return;
+            }
 
             string videoPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "assets", "Icon", "Neonmusic.mp4");
             if (!File.Exists(videoPath))
@@ -48,13 +56,16 @@ namespace Neon_music
                 await EndIntroVideoAndLoadWebView();
                 return;
             }
+
             IntroVideo.Source = new Uri(videoPath);
             IntroVideo.Play();
+
             videoTimer = new DispatcherTimer();
             videoTimer.Interval = TimeSpan.FromSeconds(5);
             videoTimer.Tick += VideoTimer_Tick;
             videoTimer.Start();
         }
+
 
         private async void VideoTimer_Tick(object? sender, EventArgs e)
         {
@@ -78,30 +89,49 @@ namespace Neon_music
         }
 
         private async System.Threading.Tasks.Task EndIntroVideoAndLoadWebView()
+{
+    IntroGrid.Visibility = Visibility.Collapsed;
+    webView.Visibility = Visibility.Visible;
+
+    string configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "assets", "Neonmusic.config");
+    var configLines = File.ReadAllLines(configPath).Select(line => line.Trim()).ToList();
+
+    string htmlRelativePath = ReadSingleTopicPath(configLines);
+    if (string.IsNullOrEmpty(htmlRelativePath))
+    {
+        Application.Current.Shutdown();
+        return;
+    }
+
+    string hmsValue = GetConfigValue(configLines, ".-hms") ?? "1";
+
+    await webView.EnsureCoreWebView2Async();
+
+    if (hmsValue == "1")
+    {
+        string assetsFolderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "assets");
+        webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+            "appassets.local",
+            assetsFolderPath,
+            CoreWebView2HostResourceAccessKind.Allow);
+        webView.CoreWebView2.AddHostObjectToScript("bridge", new JsBridge());
+        string htmlVirtualUri = "https://appassets.local/" + htmlRelativePath.Replace('\\', '/');
+        webView.Source = new Uri(htmlVirtualUri);
+    }
+    else if (hmsValue == "2")
+    {
+        string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "assets", htmlRelativePath);
+        if (File.Exists(htmlPath))
         {
-            IntroGrid.Visibility = Visibility.Collapsed;
-            webView.Visibility = Visibility.Visible;
-
-            string configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "assets", "Neonmusic.config");
-            var configLines = File.ReadAllLines(configPath).Select(line => line.Trim()).ToList();
-
-            string htmlRelativePath = ReadSingleTopicPath(configLines);
-            if (string.IsNullOrEmpty(htmlRelativePath))
-            {
-                Application.Current.Shutdown();
-                return;
-            }
-
-            string assetsFolderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "assets");
-            await webView.EnsureCoreWebView2Async();
-            webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                "appassets.local",
-                assetsFolderPath,
-                CoreWebView2HostResourceAccessKind.Allow);
-            webView.CoreWebView2.AddHostObjectToScript("bridge", new JsBridge());
-            string htmlVirtualUri = "https://appassets.local/" + htmlRelativePath.Replace('\\', '/');
-            webView.Source = new Uri(htmlVirtualUri);
+            string htmlContent = File.ReadAllText(htmlPath);
+            webView.CoreWebView2.NavigateToString(htmlContent);
         }
+        else
+        {
+            Application.Current.Shutdown();
+        }
+    }
+}
 
 
 

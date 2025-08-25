@@ -2,10 +2,13 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
-        Title="Neon Music" Height="600" Width="800"
-        WindowStyle="None" AllowsTransparency="True" Background="Transparent">
-
-    <Border Background="White" BorderBrush="Gray" BorderThickness="1" CornerRadius="6">
+        Title="Neon Music" 
+        WindowStyle="None" 
+        AllowsTransparency="True" 
+        Background="Transparent"
+        Width="{Binding WindowWidth}" 
+        Height="{Binding WindowHeight}">
+    <Border Background="Transparent" BorderBrush="Gray" BorderThickness="1" CornerRadius="6">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="30"/>
@@ -19,10 +22,11 @@
                     <Button x:Name="CloseBtn" Click="CloseBtn_Click" Width="40" Height="25" Background="Transparent" BorderThickness="0" Foreground="White" FontSize="14" />
                 </StackPanel>
             </Grid>
-            <Grid x:Name="IntroGrid" Background="#0e1010" Grid.RowSpan="2" Visibility="Visible">
-                <MediaElement x:Name="IntroVideo" LoadedBehavior="Manual" UnloadedBehavior="Stop" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            <Grid x:Name="IntroGrid" Background="Transparent" Grid.RowSpan="2" Visibility="Visible">
+                <MediaElement x:Name="IntroVideo" LoadedBehavior="Manual" UnloadedBehavior="Stop" 
+                              Stretch="Uniform" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
                 <Button x:Name="SkipButton" Content="跳过" Width="60" Height="30" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,5,5,0" 
-        Foreground="Black" Background="#80FFFFFF" BorderBrush="Transparent" Click="SkipButton_Click"/>
+                        Foreground="Black" Background="#80FFFFFF" BorderBrush="Transparent" Click="SkipButton_Click"/>
             </Grid>
             <wv2:WebView2 x:Name="webView" Grid.Row="1" Visibility="Collapsed"/>
         </Grid>
