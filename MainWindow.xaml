@@ -5,13 +5,13 @@
         Title="Neon Music" Height="600" Width="800"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent">
 
-    <Border Background="White" BorderBrush="Gray" BorderThickness="1" CornerRadius="6">
+    <Border Background="#333333" BorderBrush="#555555" BorderThickness="1" CornerRadius="6">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="30"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
-            <Grid x:Name="TitleBar" Background="#1e1e1e" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown" Grid.Row="0">
+            <Grid x:Name="TitleBar" Background="#222222" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown" Grid.Row="0">
                 <TextBlock x:Name="TitleTextBlock" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="White" FontWeight="Bold" Text="Neon Music" />
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" >
                     <Button x:Name="MinimizeBtn" Click="MinimizeBtn_Click" Width="40" Height="25" Background="Transparent" BorderThickness="0" Foreground="White" FontSize="14" />
@@ -19,12 +19,17 @@
                     <Button x:Name="CloseBtn" Click="CloseBtn_Click" Width="40" Height="25" Background="Transparent" BorderThickness="0" Foreground="White" FontSize="14" />
                 </StackPanel>
             </Grid>
-            <Grid x:Name="IntroGrid" Background="#0e1010" Grid.RowSpan="2" Visibility="Visible">
+            <Grid x:Name="IntroGrid" Background="#2a2a2a" Grid.RowSpan="2" Visibility="Visible">
                 <MediaElement x:Name="IntroVideo" LoadedBehavior="Manual" UnloadedBehavior="Stop" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
                 <Button x:Name="SkipButton" Content="跳过" Width="60" Height="30" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,5,5,0" 
-        Foreground="Black" Background="#80FFFFFF" BorderBrush="Transparent" Click="SkipButton_Click"/>
+                        Foreground="White" Background="#555555" BorderBrush="#777777" Click="SkipButton_Click"/>
             </Grid>
-            <wv2:WebView2 x:Name="webView" Grid.Row="1" Visibility="Collapsed"/>
+            <Grid Grid.Row="1">
+                <wv2:WebView2 x:Name="webView" Visibility="Collapsed" DefaultBackgroundColor="#444444"/>
+                <Grid x:Name="LoadingOverlay" Background="#66000000" Visibility="Collapsed">
+                    <TextBlock Text="加载启动源文件，请等待" Foreground="White" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Grid>
+            </Grid>
         </Grid>
     </Border>
 </Window>
