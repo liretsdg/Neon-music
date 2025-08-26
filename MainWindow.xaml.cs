@@ -15,6 +15,14 @@ namespace Neon_music
     {
         private static readonly Mutex mutex = new Mutex(true, "Neon_music_single_instance_mutex");
         private DispatcherTimer videoTimer = new DispatcherTimer();
+        private bool isMaximized = false;
+        private string? originalMaximizeContent = null;
+        private string? recoverMaximizeContent = null;
+
+        // 置顶相关
+        private bool isAlwaysOnTop = false;
+        private string? originalAlwaysOnTopContent = null;
+        private string? recoverAlwaysOnTopContent = null;
 
         public MainWindow()
         {
@@ -29,7 +37,6 @@ namespace Neon_music
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            
             sender ??= this;
 
             string configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "assets", "Neonmusic.config");
@@ -37,7 +44,7 @@ namespace Neon_music
                 Environment.Exit(0);
 
             var configLines = File.ReadAllLines(configPath)
-                .Select(line => line?.Trim() ?? string.Empty) 
+                .Select(line => line?.Trim() ?? string.Empty)
                 .Where(line => !string.IsNullOrWhiteSpace(line) && !line.StartsWith("#"))
                 .ToList();
 
@@ -145,7 +152,6 @@ namespace Neon_music
             }
         }
 
-
         private void ApplyTitleBarSettings(System.Collections.Generic.List<string> lines)
         {
             string bg = GetConfigValue(lines, ".-TitleBackground") ?? string.Empty;
@@ -191,46 +197,59 @@ namespace Neon_music
             }
 
             SetButtonContent(MinimizeBtn, GetConfigValue(lines, ".-MinimizeBtn"));
-            SetButtonContent(MaximizeBtn, GetConfigValue(lines, ".-MaximizeBtn"));
+            originalMaximizeContent = GetConfigValue(lines, ".-MaximizeBtn");
+            recoverMaximizeContent = GetConfigValue(lines, ".-MaximizeBtnRecover");
+            SetButtonContent(MaximizeBtn, originalMaximizeContent);
             SetButtonContent(CloseBtn, GetConfigValue(lines, ".-CloseBtn"));
 
-            string maximizeBtn1 = GetConfigValue(lines, ".-HideMaximizeBtn") ?? string.Empty;
-            if (maximizeBtn1.Equals("yes", StringComparison.OrdinalIgnoreCase))
+            // 置顶按钮
+            originalAlwaysOnTopContent = GetConfigValue(lines, ".-AlwaysOnTopText");
+            recoverAlwaysOnTopContent = GetConfigValue(lines, ".-AlwaysOnTopTextRecover");
+            string alwaysOnTopEnabled = GetConfigValue(lines, ".-AlwaysOnTopEnabled") ?? "no";
+            if (alwaysOnTopEnabled.Equals("yes", StringComparison.OrdinalIgnoreCase))
+            {
+                AlwaysOnTopBtn.Visibility = Visibility.Visible;
+                SetButtonContent(AlwaysOnTopBtn, originalAlwaysOnTopContent);
+            }
+            else
+            {
+                AlwaysOnTopBtn.Visibility = Visibility.Collapsed;
+            }
+
+            string hideMaximize = GetConfigValue(lines, ".-HideMaximizeBtn") ?? "no";
+            if (hideMaximize.Equals("yes", StringComparison.OrdinalIgnoreCase))
             {
                 MaximizeBtn.Visibility = Visibility.Collapsed;
-                ResizeMode = ResizeMode.CanMinimize;
                 MaximizeBtn.IsEnabled = false;
+                ResizeMode = ResizeMode.CanMinimize;
             }
             else
             {
                 MaximizeBtn.Visibility = Visibility.Visible;
-                ResizeMode = ResizeMode.CanResize;
                 MaximizeBtn.IsEnabled = true;
+                ResizeMode = ResizeMode.CanResize;
             }
         }
 
         private void SetButtonContent(System.Windows.Controls.Button btn, string? content)
         {
-         
-            string buttonContent = content ?? string.Empty;
+            if (string.IsNullOrEmpty(content)) return;
 
-            if (string.IsNullOrEmpty(buttonContent))
-                return;
+            content = content.Trim();
 
-            string imgPath = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "assets", buttonContent));
-
+            string imgPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "assets", content);
             if (File.Exists(imgPath))
             {
                 var img = new System.Windows.Controls.Image()
                 {
                     Source = new BitmapImage(new Uri(imgPath)),
-                    Stretch = Stretch.Uniform,
+                    Stretch = Stretch.Uniform
                 };
                 btn.Content = img;
             }
             else
             {
-                btn.Content = buttonContent;
+                btn.Content = content;
             }
         }
 
@@ -284,12 +303,34 @@ namespace Neon_music
 
         private void ToggleWindowMaximize()
         {
-            if (MaximizeBtn.IsEnabled)
+            if (!MaximizeBtn.IsEnabled) return;
+
+            if (!isMaximized)
             {
-                if (WindowState == WindowState.Normal)
-                    WindowState = WindowState.Maximized;
-                else
-                    WindowState = WindowState.Normal;
+                var workArea = SystemParameters.WorkArea;
+                Left = workArea.Left;
+                Top = workArea.Top;
+                Width = workArea.Width;
+                Height = workArea.Height;
+
+                if (!string.IsNullOrEmpty(recoverMaximizeContent))
+                    SetButtonContent(MaximizeBtn, recoverMaximizeContent);
+
+                isMaximized = true;
+            }
+            else
+            {
+                var configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "assets", "Neonmusic.config");
+                if (File.Exists(configPath))
+                {
+                    var configLines = File.ReadAllLines(configPath).Select(line => line?.Trim() ?? string.Empty).ToList();
+                    ApplyWindowSettings(configLines);
+                }
+
+                if (!string.IsNullOrEmpty(originalMaximizeContent))
+                    SetButtonContent(MaximizeBtn, originalMaximizeContent);
+
+                isMaximized = false;
             }
         }
 
@@ -300,15 +341,33 @@ namespace Neon_music
 
         private void MaximizeBtn_Click(object sender, RoutedEventArgs e)
         {
-            if (MaximizeBtn.IsEnabled)
-            {
-                ToggleWindowMaximize();
-            }
+            ToggleWindowMaximize();
         }
 
         private void CloseBtn_Click(object sender, RoutedEventArgs e)
         {
             Close();
+        }
+
+        // 置顶按钮事件
+        private void AlwaysOnTopBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (!AlwaysOnTopBtn.IsEnabled) return;
+
+            if (!isAlwaysOnTop)
+            {
+                this.Topmost = true;
+                isAlwaysOnTop = true;
+                if (!string.IsNullOrEmpty(recoverAlwaysOnTopContent))
+                    SetButtonContent(AlwaysOnTopBtn, recoverAlwaysOnTopContent);
+            }
+            else
+            {
+                this.Topmost = false;
+                isAlwaysOnTop = false;
+                if (!string.IsNullOrEmpty(originalAlwaysOnTopContent))
+                    SetButtonContent(AlwaysOnTopBtn, originalAlwaysOnTopContent);
+            }
         }
     }
 }

@@ -14,9 +14,10 @@
             <Grid x:Name="TitleBar" Background="#222222" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown" Grid.Row="0">
                 <TextBlock x:Name="TitleTextBlock" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="White" FontWeight="Bold" Text="Neon Music" />
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" >
-                    <Button x:Name="MinimizeBtn" Click="MinimizeBtn_Click" Width="40" Height="25" Background="Transparent" BorderThickness="0" Foreground="White" FontSize="14" />
-                    <Button x:Name="MaximizeBtn" Click="MaximizeBtn_Click" Width="40" Height="25" Background="Transparent" BorderThickness="0" Foreground="White" FontSize="14" />
-                    <Button x:Name="CloseBtn" Click="CloseBtn_Click" Width="40" Height="25" Background="Transparent" BorderThickness="0" Foreground="White" FontSize="14" />
+                    <Button x:Name="AlwaysOnTopBtn" Click="AlwaysOnTopBtn_Click" Width="30" Height="20" Background="Transparent" BorderThickness="0" Foreground="White" FontSize="12" />
+                    <Button x:Name="MinimizeBtn" Click="MinimizeBtn_Click" Width="30" Height="20" Background="Transparent" BorderThickness="0" Foreground="White" FontSize="12" />
+                    <Button x:Name="MaximizeBtn" Click="MaximizeBtn_Click" Width="30" Height="20" Background="Transparent" BorderThickness="0" Foreground="White" FontSize="12" />
+                    <Button x:Name="CloseBtn" Click="CloseBtn_Click" Width="30" Height="20" Background="Transparent" BorderThickness="0" Foreground="White" FontSize="12" />
                 </StackPanel>
             </Grid>
             <Grid x:Name="IntroGrid" Background="#2a2a2a" Grid.RowSpan="2" Visibility="Visible">
