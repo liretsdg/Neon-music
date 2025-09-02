@@ -1,9 +1,11 @@
-﻿using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.Core;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -13,23 +15,25 @@ namespace Neon_music
 {
     public partial class MainWindow : Window
     {
-        private static readonly Mutex mutex = new Mutex(true, "Neon_music_single_instance_mutex");
-        private DispatcherTimer videoTimer = new DispatcherTimer();
-        private bool isMaximized = false;
-        private string? originalMaximizeContent = null;
-        private string? recoverMaximizeContent = null;
-
-        // 置顶相关
-        private bool isAlwaysOnTop = false;
-        private string? originalAlwaysOnTopContent = null;
-        private string? recoverAlwaysOnTopContent = null;
+        private static readonly Mutex _instanceMutex = new Mutex(true, "Neon_music_single_instance_mutex");
+        private readonly DispatcherTimer _videoTimer = new DispatcherTimer();
+        private bool _isMaximized;
+        private string? _originalMaximizeContent;
+        private string? _recoverMaximizeContent;
+        private bool _isAlwaysOnTop;
+        private string? _originalAlwaysOnTopContent;
+        private string? _recoverAlwaysOnTopContent;
+        private const string ConfigFileName = "Neonmusic.config";
+        private const string ConfigDir = "assets";
+        private string _configFullPath;
 
         public MainWindow()
         {
-            if (!mutex.WaitOne(TimeSpan.Zero, true))
+            if (!_instanceMutex.WaitOne(TimeSpan.Zero, true))
                 Environment.Exit(0);
 
             InitializeComponent();
+            _configFullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ConfigDir, ConfigFileName);
 
             Loaded += MainWindow_Loaded;
             IntroVideo.MediaEnded += IntroVideo_MediaEnded;
@@ -39,27 +43,21 @@ namespace Neon_music
         {
             sender ??= this;
 
-            string configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "assets", "Neonmusic.config");
-            if (!File.Exists(configPath))
+            if (!File.Exists(_configFullPath))
                 Environment.Exit(0);
 
-            var configLines = File.ReadAllLines(configPath)
-                .Select(line => line?.Trim() ?? string.Empty)
-                .Where(line => !string.IsNullOrWhiteSpace(line) && !line.StartsWith("#"))
-                .ToList();
-
+            var configLines = ReadConfigLines();
             ApplyTitleBarSettings(configLines);
             ApplyWindowSettings(configLines);
 
-            string kpgg = GetConfigValue(configLines, ".-Kpgg") ?? "yes";
-
+            var kpgg = GetConfigValue(configLines, ".-Kpgg") ?? "yes";
             if (kpgg.Equals("no", StringComparison.OrdinalIgnoreCase))
             {
                 await EndIntroVideoAndLoadWebView();
                 return;
             }
 
-            string videoPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "assets", "Load-source", "Video", "Neonmusic.mp4");
+            var videoPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ConfigDir, "Load-source", "Video", "Neonmusic.mp4");
             if (!File.Exists(videoPath))
             {
                 await EndIntroVideoAndLoadWebView();
@@ -69,14 +67,13 @@ namespace Neon_music
             IntroVideo.Source = new Uri(videoPath);
             IntroVideo.Play();
 
-            videoTimer.Interval = TimeSpan.FromSeconds(5);
-            videoTimer.Tick += VideoTimer_Tick;
-            videoTimer.Start();
+            _videoTimer.Interval = TimeSpan.FromSeconds(5);
+            _videoTimer.Tick += VideoTimer_Tick;
+            _videoTimer.Start();
         }
-
         private async void VideoTimer_Tick(object? sender, EventArgs e)
         {
-            videoTimer.Stop();
+            _videoTimer.Stop();
             await EndIntroVideoAndLoadWebView();
         }
 
@@ -87,7 +84,7 @@ namespace Neon_music
 
         private async void SkipButton_Click(object sender, RoutedEventArgs e)
         {
-            videoTimer.Stop();
+            _videoTimer.Stop();
             IntroVideo.Stop();
             await EndIntroVideoAndLoadWebView();
         }
@@ -97,52 +94,51 @@ namespace Neon_music
             IntroGrid.Visibility = Visibility.Collapsed;
             webView.Visibility = Visibility.Visible;
 
-            string configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "assets", "Neonmusic.config");
-            var configLines = File.ReadAllLines(configPath)
-                .Select(line => line?.Trim() ?? string.Empty)
-                .ToList();
+            if (!File.Exists(_configFullPath))
+            {
+                Application.Current.Shutdown();
+                return;
+            }
 
-            string htmlRelativePath = ReadSingleTopicPath(configLines) ?? string.Empty;
+            var configLines = ReadConfigLines();
+            var htmlRelativePath = ReadSingleTopicPath(configLines);
             if (string.IsNullOrEmpty(htmlRelativePath))
             {
                 Application.Current.Shutdown();
                 return;
             }
 
-            string hmsValue = GetConfigValue(configLines, ".-hms") ?? "1";
-
+            var hmsValue = GetConfigValue(configLines, ".-hms") ?? "1";
             await webView.EnsureCoreWebView2Async();
             if (webView.CoreWebView2 == null)
             {
                 Application.Current.Shutdown();
                 return;
             }
-            webView.CoreWebView2.NavigationStarting += (s, e) =>
-            {
-                LoadingOverlay.Visibility = Visibility.Visible;
-            };
+
             webView.CoreWebView2.NavigationCompleted += (s, e) =>
             {
-                LoadingOverlay.Visibility = Visibility.Collapsed;
+                if (!e.IsSuccess) Application.Current.Shutdown();
             };
 
             if (hmsValue == "1")
             {
-                string assetsFolderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "assets");
+                var assetsFolderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ConfigDir);
                 webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
                     "appassets.local",
                     assetsFolderPath,
                     CoreWebView2HostResourceAccessKind.Allow);
                 webView.CoreWebView2.AddHostObjectToScript("bridge", new JsBridge());
-                string htmlVirtualUri = "https://appassets.local/" + htmlRelativePath.Replace('\\', '/');
+
+                var htmlVirtualUri = $"https://appassets.local/{htmlRelativePath.Replace('\\', '/')}";
                 webView.Source = new Uri(htmlVirtualUri);
             }
             else if (hmsValue == "2")
             {
-                string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "assets", htmlRelativePath);
+                var htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ConfigDir, htmlRelativePath);
                 if (File.Exists(htmlPath))
                 {
-                    string htmlContent = File.ReadAllText(htmlPath);
+                    var htmlContent = File.ReadAllText(htmlPath);
                     webView.CoreWebView2.NavigateToString(htmlContent);
                 }
                 else
@@ -152,44 +148,43 @@ namespace Neon_music
             }
         }
 
-        private void ApplyTitleBarSettings(System.Collections.Generic.List<string> lines)
+        private void ApplyTitleBarSettings(List<string> lines)
         {
-            string bg = GetConfigValue(lines, ".-TitleBackground") ?? string.Empty;
-            if (!string.IsNullOrEmpty(bg))
+            var bgConfig = GetConfigValue(lines, ".-TitleBackground");
+            if (!string.IsNullOrEmpty(bgConfig))
             {
-                if ((bg.Length == 6 || bg.Length == 8) && bg.All(c => "0123456789ABCDEFabcdef".Contains(c)))
+                if ((bgConfig.Length == 6 || bgConfig.Length == 8) && bgConfig.All(c => "0123456789ABCDEFabcdef".Contains(c)))
                 {
                     try
                     {
-                        var color = (Color)ColorConverter.ConvertFromString("#" + bg);
+                        var color = (Color)ColorConverter.ConvertFromString($"#{bgConfig}");
                         TitleBar.Background = new SolidColorBrush(color);
                     }
                     catch { }
                 }
                 else
                 {
-                    string imgPath = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "assets", bg));
+                    var imgPath = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ConfigDir, bgConfig));
                     if (File.Exists(imgPath))
                     {
-                        ImageBrush brush = new ImageBrush(new BitmapImage(new Uri(imgPath)));
-                        brush.Stretch = Stretch.Fill;
+                        var brush = new ImageBrush(new BitmapImage(new Uri(imgPath))) { Stretch = Stretch.Fill };
                         TitleBar.Background = brush;
                     }
                 }
             }
 
-            string titleText = GetConfigValue(lines, ".-TitleText") ?? string.Empty;
+            var titleText = GetConfigValue(lines, ".-TitleText");
             if (!string.IsNullOrEmpty(titleText))
             {
                 TitleTextBlock.Text = titleText;
-                string textColor = GetConfigValue(lines, ".-TitleTextColor") ?? string.Empty;
+                var textColor = GetConfigValue(lines, ".-TitleTextColor");
                 if (!string.IsNullOrEmpty(textColor) &&
                     (textColor.Length == 6 || textColor.Length == 8) &&
                     textColor.All(c => "0123456789ABCDEFabcdef".Contains(c)))
                 {
                     try
                     {
-                        var color = (Color)ColorConverter.ConvertFromString("#" + textColor);
+                        var color = (Color)ColorConverter.ConvertFromString($"#{textColor}");
                         TitleTextBlock.Foreground = new SolidColorBrush(color);
                     }
                     catch { }
@@ -197,26 +192,22 @@ namespace Neon_music
             }
 
             SetButtonContent(MinimizeBtn, GetConfigValue(lines, ".-MinimizeBtn"));
-            originalMaximizeContent = GetConfigValue(lines, ".-MaximizeBtn");
-            recoverMaximizeContent = GetConfigValue(lines, ".-MaximizeBtnRecover");
-            SetButtonContent(MaximizeBtn, originalMaximizeContent);
+            _originalMaximizeContent = GetConfigValue(lines, ".-MaximizeBtn");
+            _recoverMaximizeContent = GetConfigValue(lines, ".-MaximizeBtnRecover");
+            SetButtonContent(MaximizeBtn, _originalMaximizeContent);
             SetButtonContent(CloseBtn, GetConfigValue(lines, ".-CloseBtn"));
 
-            // 置顶按钮
-            originalAlwaysOnTopContent = GetConfigValue(lines, ".-AlwaysOnTopText");
-            recoverAlwaysOnTopContent = GetConfigValue(lines, ".-AlwaysOnTopTextRecover");
-            string alwaysOnTopEnabled = GetConfigValue(lines, ".-AlwaysOnTopEnabled") ?? "no";
-            if (alwaysOnTopEnabled.Equals("yes", StringComparison.OrdinalIgnoreCase))
-            {
-                AlwaysOnTopBtn.Visibility = Visibility.Visible;
-                SetButtonContent(AlwaysOnTopBtn, originalAlwaysOnTopContent);
-            }
-            else
-            {
-                AlwaysOnTopBtn.Visibility = Visibility.Collapsed;
-            }
+            _originalAlwaysOnTopContent = GetConfigValue(lines, ".-AlwaysOnTopText");
+            _recoverAlwaysOnTopContent = GetConfigValue(lines, ".-AlwaysOnTopTextRecover");
+            var alwaysOnTopEnabled = GetConfigValue(lines, ".-AlwaysOnTopEnabled") ?? "no";
 
-            string hideMaximize = GetConfigValue(lines, ".-HideMaximizeBtn") ?? "no";
+            AlwaysOnTopBtn.Visibility = alwaysOnTopEnabled.Equals("yes", StringComparison.OrdinalIgnoreCase)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+            if (AlwaysOnTopBtn.Visibility == Visibility.Visible)
+                SetButtonContent(AlwaysOnTopBtn, _originalAlwaysOnTopContent);
+
+            var hideMaximize = GetConfigValue(lines, ".-HideMaximizeBtn") ?? "no";
             if (hideMaximize.Equals("yes", StringComparison.OrdinalIgnoreCase))
             {
                 MaximizeBtn.Visibility = Visibility.Collapsed;
@@ -230,22 +221,19 @@ namespace Neon_music
                 ResizeMode = ResizeMode.CanResize;
             }
         }
-
-        private void SetButtonContent(System.Windows.Controls.Button btn, string? content)
+        private void SetButtonContent(Button btn, string? content)
         {
             if (string.IsNullOrEmpty(content)) return;
 
             content = content.Trim();
-
-            string imgPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "assets", content);
+            var imgPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ConfigDir, content);
             if (File.Exists(imgPath))
             {
-                var img = new System.Windows.Controls.Image()
+                btn.Content = new Image
                 {
                     Source = new BitmapImage(new Uri(imgPath)),
                     Stretch = Stretch.Uniform
                 };
-                btn.Content = img;
             }
             else
             {
@@ -253,84 +241,80 @@ namespace Neon_music
             }
         }
 
-        private string ReadSingleTopicPath(System.Collections.Generic.List<string> lines)
+        private string ReadSingleTopicPath(List<string> lines)
         {
             var topicLines = lines.Where(line => line.StartsWith(".-Topic=", StringComparison.OrdinalIgnoreCase)).ToList();
             return topicLines.Count == 1 ? topicLines[0].Substring(".-Topic=".Length).Trim() : string.Empty;
         }
 
-        private void ApplyWindowSettings(System.Collections.Generic.List<string> lines)
+        private void ApplyWindowSettings(List<string> lines)
         {
             ResizeMode = ResizeMode.CanMinimize;
-
-            int width = ParseIntOrDefault(GetConfigValue(lines, ".-width"), 400);
-            int height = ParseIntOrDefault(GetConfigValue(lines, ".-height"), 600);
+            var width = ParseIntOrDefault(GetConfigValue(lines, ".-width"), 400);
+            var height = ParseIntOrDefault(GetConfigValue(lines, ".-height"), 600);
 
             Width = width;
             Height = height;
-
             Left = (SystemParameters.PrimaryScreenWidth - Width) / 2;
             Top = (SystemParameters.PrimaryScreenHeight - Height) / 2;
         }
 
-        private string GetConfigValue(System.Collections.Generic.List<string> lines, string key)
+        private List<string> ReadConfigLines()
         {
-            var line = lines.FirstOrDefault(l => l.StartsWith(key + "=", StringComparison.OrdinalIgnoreCase));
-            if (line == null) return string.Empty;
-
-            int idx = line.IndexOf('=');
-            return idx >= 0 ? line.Substring(idx + 1).Trim() : string.Empty;
+            return File.ReadAllLines(_configFullPath)
+                .Select(line => line?.Trim() ?? string.Empty)
+                .Where(line => !string.IsNullOrWhiteSpace(line) && !line.StartsWith("#"))
+                .ToList();
         }
+        private string? GetConfigValue(List<string> lines, string key)
+        {
+            var line = lines.FirstOrDefault(l => l.StartsWith($"{key}=", StringComparison.OrdinalIgnoreCase));
+            if (line == null) return null;
 
+            var idx = line.IndexOf('=');
+            return idx >= 0 ? line.Substring(idx + 1).Trim() : null;
+        }
         private int ParseIntOrDefault(string? s, int def)
         {
-            if (int.TryParse(s, out int val))
-                return val;
-            return def;
+            return int.TryParse(s, out var val) ? val : def;
         }
 
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (e.ClickCount == 2)
-            {
                 ToggleWindowMaximize();
-            }
             else
-            {
                 DragMove();
-            }
         }
 
         private void ToggleWindowMaximize()
         {
             if (!MaximizeBtn.IsEnabled) return;
 
-            if (!isMaximized)
+            if (!_isMaximized)
             {
                 var workArea = SystemParameters.WorkArea;
                 Left = workArea.Left;
                 Top = workArea.Top;
                 Width = workArea.Width;
                 Height = workArea.Height;
+                if (!string.IsNullOrEmpty(_recoverMaximizeContent))
+                    SetButtonContent(MaximizeBtn, _recoverMaximizeContent);
 
-                if (!string.IsNullOrEmpty(recoverMaximizeContent))
-                    SetButtonContent(MaximizeBtn, recoverMaximizeContent);
-
-                isMaximized = true;
+                _isMaximized = true;
             }
             else
             {
-                var configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "assets", "Neonmusic.config");
-                if (File.Exists(configPath))
+                if (File.Exists(_configFullPath))
                 {
-                    var configLines = File.ReadAllLines(configPath).Select(line => line?.Trim() ?? string.Empty).ToList();
+                    var configLines = ReadConfigLines();
                     ApplyWindowSettings(configLines);
                 }
 
-                if (!string.IsNullOrEmpty(originalMaximizeContent))
-                    SetButtonContent(MaximizeBtn, originalMaximizeContent);
+                if (!string.IsNullOrEmpty(_originalMaximizeContent))
+                    SetButtonContent(MaximizeBtn, _originalMaximizeContent);
 
-                isMaximized = false;
+                _isMaximized = false;
             }
         }
 
@@ -349,25 +333,30 @@ namespace Neon_music
             Close();
         }
 
-        // 置顶按钮事件
         private void AlwaysOnTopBtn_Click(object sender, RoutedEventArgs e)
         {
             if (!AlwaysOnTopBtn.IsEnabled) return;
 
-            if (!isAlwaysOnTop)
+            if (!_isAlwaysOnTop)
             {
-                this.Topmost = true;
-                isAlwaysOnTop = true;
-                if (!string.IsNullOrEmpty(recoverAlwaysOnTopContent))
-                    SetButtonContent(AlwaysOnTopBtn, recoverAlwaysOnTopContent);
+                Topmost = true;
+                _isAlwaysOnTop = true;
+                if (!string.IsNullOrEmpty(_recoverAlwaysOnTopContent))
+                    SetButtonContent(AlwaysOnTopBtn, _recoverAlwaysOnTopContent);
             }
             else
             {
-                this.Topmost = false;
-                isAlwaysOnTop = false;
-                if (!string.IsNullOrEmpty(originalAlwaysOnTopContent))
-                    SetButtonContent(AlwaysOnTopBtn, originalAlwaysOnTopContent);
+                Topmost = false;
+                _isAlwaysOnTop = false;
+                if (!string.IsNullOrEmpty(_originalAlwaysOnTopContent))
+                    SetButtonContent(AlwaysOnTopBtn, _originalAlwaysOnTopContent);
             }
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            _instanceMutex?.ReleaseMutex();
+            base.OnClosed(e);
         }
     }
 }
