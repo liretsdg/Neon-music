@@ -1,27 +1,18 @@
-﻿using System;
+using System;
 using System.IO;
+using System.Net.Http;
+using System.Threading.Tasks;
 
 public class JsBridge
 {
-    private readonly string allowedRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "assets");
-
-    // 检查路径是否在允许的 assets 文件夹下
-    private bool IsUnderAllowedFolder(string path)
-    {
-        string fullPath = Path.GetFullPath(path);
-        return fullPath.StartsWith(allowedRoot, StringComparison.OrdinalIgnoreCase);
-    }
 
     // ================== 文本文件操作 ==================
-
-    // 读取文本文件
     public string ReadFile(string path)
     {
         try
         {
-            string full = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, path));
-            if (!IsUnderAllowedFolder(full)) return "[读取失败] 禁止访问非 assets 文件夹";
-            return File.ReadAllText(full);
+            string fullPath = GetFinalPath(path);
+            return File.ReadAllText(fullPath);
         }
         catch (Exception ex)
         {
@@ -29,14 +20,17 @@ public class JsBridge
         }
     }
 
-    // 写入文本文件
     public bool WriteFile(string path, string content)
     {
         try
         {
-            string full = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, path));
-            if (!IsUnderAllowedFolder(full)) return false;
-            File.WriteAllText(full, content);
+            string fullPath = GetFinalPath(path);
+            string? parentDir = Path.GetDirectoryName(fullPath);
+            if (!string.IsNullOrEmpty(parentDir) && !Directory.Exists(parentDir))
+            {
+                Directory.CreateDirectory(parentDir);
+            }
+            File.WriteAllText(fullPath, content);
             return true;
         }
         catch
@@ -45,14 +39,15 @@ public class JsBridge
         }
     }
 
-    // 删除文件
     public bool DeleteFile(string path)
     {
         try
         {
-            string full = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, path));
-            if (!IsUnderAllowedFolder(full)) return false;
-            if (File.Exists(full)) File.Delete(full);
+            string fullPath = GetFinalPath(path);
+            if (File.Exists(fullPath))
+            {
+                File.Delete(fullPath);
+            }
             return true;
         }
         catch
@@ -62,16 +57,23 @@ public class JsBridge
     }
 
     // ================== 文件管理操作 ==================
-
-    // 复制文件
     public bool CopyFile(string sourcePath, string destPath)
     {
         try
         {
-            string fullSource = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, sourcePath));
-            string fullDest = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, destPath));
-            if (!IsUnderAllowedFolder(fullSource) || !IsUnderAllowedFolder(fullDest)) return false;
-            if (!File.Exists(fullSource)) return false;
+            string fullSource = GetFinalPath(sourcePath);
+            string fullDest = GetFinalPath(destPath);
+
+            if (!File.Exists(fullSource))
+            {
+                return false; 
+            }
+            string? destParentDir = Path.GetDirectoryName(fullDest);
+            if (!string.IsNullOrEmpty(destParentDir) && !Directory.Exists(destParentDir))
+            {
+                Directory.CreateDirectory(destParentDir);
+            }
+
             File.Copy(fullSource, fullDest, true);
             return true;
         }
@@ -81,16 +83,27 @@ public class JsBridge
         }
     }
 
-    // 移动文件
     public bool MoveFile(string sourcePath, string destPath)
     {
         try
         {
-            string fullSource = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, sourcePath));
-            string fullDest = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, destPath));
-            if (!IsUnderAllowedFolder(fullSource) || !IsUnderAllowedFolder(fullDest)) return false;
-            if (!File.Exists(fullSource)) return false;
-            if (File.Exists(fullDest)) File.Delete(fullDest);
+            string fullSource = GetFinalPath(sourcePath);
+            string fullDest = GetFinalPath(destPath);
+
+            if (!File.Exists(fullSource))
+            {
+                return false;
+            }
+            string? destParentDir = Path.GetDirectoryName(fullDest);
+            if (!string.IsNullOrEmpty(destParentDir) && !Directory.Exists(destParentDir))
+            {
+                Directory.CreateDirectory(destParentDir);
+            }
+            if (File.Exists(fullDest))
+            {
+                File.Delete(fullDest);
+            }
+
             File.Move(fullSource, fullDest);
             return true;
         }
@@ -101,16 +114,12 @@ public class JsBridge
     }
 
     // ================== 二进制文件操作 ==================
-
-    // 读取文件字节
     public byte[] ReadFileBytes(string path)
     {
         try
         {
-            string full = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, path));
-            if (!IsUnderAllowedFolder(full)) return Array.Empty<byte>();
-            if (File.Exists(full)) return File.ReadAllBytes(full);
-            return Array.Empty<byte>();
+            string fullPath = GetFinalPath(path);
+            return File.Exists(fullPath) ? File.ReadAllBytes(fullPath) : Array.Empty<byte>();
         }
         catch
         {
@@ -118,19 +127,72 @@ public class JsBridge
         }
     }
 
-    // 读取文件并返回 Base64 字符串，用于图片/音频/视频显示
     public string ReadFileBase64(string path)
     {
         try
         {
-            string full = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, path));
-            if (!IsUnderAllowedFolder(full)) return string.Empty;
-            if (File.Exists(full)) return Convert.ToBase64String(File.ReadAllBytes(full));
+            string fullPath = GetFinalPath(path);
+            if (File.Exists(fullPath))
+            {
+                byte[] fileBytes = File.ReadAllBytes(fullPath);
+                return Convert.ToBase64String(fileBytes);
+            }
             return string.Empty;
         }
         catch
         {
             return string.Empty;
+        }
+    }
+
+    // ================== 下载文件操作 ==================
+    public async Task<string> DownloadFileAsync(string url, string savePath)
+    {
+        try
+        {
+            string fullSavePath = GetFinalPath(savePath);
+            string? saveParentDir = Path.GetDirectoryName(fullSavePath);
+            if (!string.IsNullOrEmpty(saveParentDir))
+            {
+                Directory.CreateDirectory(saveParentDir);
+            }
+
+            using (HttpClient client = new HttpClient())
+            using (HttpResponseMessage response = await client.GetAsync(url))
+            {
+                if (!response.IsSuccessStatusCode)
+                {
+                    return $"[下载失败] HTTP 状态码 {response.StatusCode}";
+                }
+
+                byte[] data = await response.Content.ReadAsByteArrayAsync();
+                await File.WriteAllBytesAsync(fullSavePath, data);
+            }
+
+            return $"[下载完成] 保存路径: {fullSavePath}";
+        }
+        catch (Exception ex)
+        {
+            return "[下载失败] " + ex.Message;
+        }
+    }
+
+    private string GetFinalPath(string inputPath)
+    {
+        if (string.IsNullOrWhiteSpace(inputPath))
+        {
+            throw new ArgumentException("路径不能为空", nameof(inputPath));
+        }
+        bool isAbsolutePath = Path.IsPathRooted(inputPath) || inputPath.IndexOf(':') > 0;
+
+        if (isAbsolutePath)
+        {
+            return Path.GetFullPath(inputPath);
+        }
+        else
+        {
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            return Path.GetFullPath(Path.Combine(baseDir, inputPath));
         }
     }
 }
