@@ -19,7 +19,7 @@ public class JsBridge
             return "[读取失败] " + ex.Message;
         }
     }
-
+   
     public bool WriteFile(string path, string content)
     {
         try
@@ -63,11 +63,34 @@ public class JsBridge
         {
             string fullSource = GetFinalPath(sourcePath);
             string fullDest = GetFinalPath(destPath);
+            if (Directory.Exists(fullSource))
+            {
+                if (!Directory.Exists(fullDest))
+                {
+                    Directory.CreateDirectory(fullDest);
+                }
 
+                foreach (string file in Directory.GetFiles(fullSource, "*", SearchOption.AllDirectories))
+                {
+                    string relativePath = Path.GetRelativePath(fullSource, file);
+                    string targetFile = Path.Combine(fullDest, relativePath);
+
+                    string? targetDir = Path.GetDirectoryName(targetFile);
+                    if (!string.IsNullOrEmpty(targetDir) && !Directory.Exists(targetDir))
+                    {
+                        Directory.CreateDirectory(targetDir);
+                    }
+
+                    File.Copy(file, targetFile, true);
+                }
+
+                return true;
+            }
             if (!File.Exists(fullSource))
             {
-                return false; 
+                return false;
             }
+
             string? destParentDir = Path.GetDirectoryName(fullDest);
             if (!string.IsNullOrEmpty(destParentDir) && !Directory.Exists(destParentDir))
             {
@@ -89,11 +112,21 @@ public class JsBridge
         {
             string fullSource = GetFinalPath(sourcePath);
             string fullDest = GetFinalPath(destPath);
+            if (Directory.Exists(fullSource))
+            {
+                if (Directory.Exists(fullDest))
+                {
+                    Directory.Delete(fullDest, true);
+                }
 
+                Directory.Move(fullSource, fullDest);
+                return true;
+            }
             if (!File.Exists(fullSource))
             {
                 return false;
             }
+
             string? destParentDir = Path.GetDirectoryName(fullDest);
             if (!string.IsNullOrEmpty(destParentDir) && !Directory.Exists(destParentDir))
             {
@@ -112,6 +145,7 @@ public class JsBridge
             return false;
         }
     }
+
 
     // ================== 二进制文件操作 ==================
     public byte[] ReadFileBytes(string path)
