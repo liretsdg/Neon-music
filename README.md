@@ -16,6 +16,6 @@
 
 ## 介绍图
 <div style="display:flex; gap:10px;">
-< img width="512" height="808" alt="屏幕截图 2026-05-02 231418" src="https://github.com/user-attachments/assets/f7d1c532-bac5-455d-b6e8-62c4ee3de9f3" />
-< img width="513" height="805" alt="屏幕截图 2026-05-02 231411" src="https://github.com/user-attachments/assets/14fb606f-8323-4914-9ae9-1de5c7a7a036" />
+<img width="512" height="808" alt="屏幕截图 2026-05-02 231418" src="https://github.com/user-attachments/assets/f7d1c532-bac5-455d-b6e8-62c4ee3de9f3"/>
+<img width="513" height="805" alt="屏幕截图 2026-05-02 231411" src="https://github.com/user-attachments/assets/14fb606f-8323-4914-9ae9-1de5c7a7a036"/>
 </div>
