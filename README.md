@@ -15,4 +15,4 @@
 - （看测试包2）
 
 ## 介绍图
-< img width="300" src="https://github.com/user-attachments/assets/f7d1c532-bac5-455d-b6e8-62c4ee3de9f3"> | < img width="300" src="https://github.com/user-attachments/assets/14fb606f-8323-4914-9ae9-1de5c7a7a036">
+<img width="300" src="https://github.com/user-attachments/assets/f7d1c532-bac5-455d-b6e8-62c4ee3de9f3"> | <img width="300" src="https://github.com/user-attachments/assets/14fb606f-8323-4914-9ae9-1de5c7a7a036">
